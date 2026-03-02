@@ -1,0 +1,67 @@
+---
+interface Props {
+  frontmatter: {
+    title: string;
+    date: Date;
+    description?: string;
+  };
+}
+
+const { frontmatter } = Astro.props;
+import Layout from './Layout.astro';
+---
+
+<Layout title={frontmatter.title} description={frontmatter.description}>
+  <article class="blog-post">
+    <div class="post-header">
+      <h1>{frontmatter.title}</h1>
+      <div class="post-meta">
+        <time datetime={frontmatter.date.toISOString()}>
+          {frontmatter.date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </time>
+      </div>
+    </div>
+
+    <div class="post-content">
+      <slot />
+    </div>
+  </article>
+</Layout>
+
+<script>
+// Add copy button to code blocks
+document.addEventListener('DOMContentLoaded', () => {
+  const codeBlocks = document.querySelectorAll('pre code');
+  codeBlocks.forEach((codeBlock) => {
+    const button = document.createElement('button');
+    button.className = 'copy-button';
+    button.textContent = 'Copy';
+    
+    button.addEventListener('click', async () => {
+      const code = codeBlock.textContent;
+      try {
+        await navigator.clipboard.writeText(code);
+        button.textContent = 'Copied!';
+        setTimeout(() => {
+          button.textContent = 'Copy';
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        button.textContent = 'Error!';
+      }
+    });
+    
+    const pre = codeBlock.parentElement;
+    if (!pre) {
+      return;
+    }
+
+    pre.style.position = 'relative';
+    pre.appendChild(button);
+  });
+});
+</script>
