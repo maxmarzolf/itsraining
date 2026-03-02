@@ -7,7 +7,7 @@ import Layout from '../layouts/Layout.astro';
   <canvas id="ripple-canvas"></canvas>
   <canvas id="title-splash"></canvas>
   <div id="hero-ground"></div>
-  <img id="hero-outline" src="/me4.jpg" alt="" />
+  <img id="hero-outline" src="/me.jpg" alt="" />
   <div class="hero">
     <h1>It's Raining Information</h1>
     <p class="hero-subtitle">A disjointed collection of my notebooks.</p>
@@ -446,8 +446,8 @@ import Layout from '../layouts/Layout.astro';
 
   function initHeroImage() {
     if (!heroOutlineImg) return;
-    const sourcePath = heroOutlineImg.getAttribute('src') || '/me4.jpg';
-    const candidates = Array.from(new Set([sourcePath, '/me4.jpg', 'me4.jpg', './me4.jpg']));
+    const sourcePath = heroOutlineImg.getAttribute('src') || '/me.jpg';
+    const candidates = Array.from(new Set([sourcePath, '/me.jpg', 'me.jpg', './me.jpg']));
     const tryLoadAt = (idx: number) => {
       if (idx >= candidates.length) {
         heroOutlineImg.style.display = 'none';
