@@ -172,12 +172,15 @@ import Layout from '../layouts/Layout.astro';
   const fontSize = 14;
   let columns = Math.floor(canvas.width / fontSize);
   let drops: number[] = [];
+  let dropSpeeds: number[] = [];
 
   function initDrops() {
     columns = Math.floor(canvas.width / fontSize);
     drops = [];
+    dropSpeeds = [];
     for (let i = 0; i < columns; i++) {
-      drops[i] = Math.random() * -100;
+      drops[i] = Math.random() * -140;
+      dropSpeeds[i] = 0.43 + Math.random() * 0.16;
     }
   }
   initDrops();
@@ -241,7 +244,7 @@ import Layout from '../layouts/Layout.astro';
   }
 
   let lastTime = 0;
-  const frameInterval = 40; // ~25 fps
+  const baseFrameMs = 1000 / 60;
   const umbrellaCore = 0.78;
   const effectRgb = '0, 95, 184';
 
@@ -462,7 +465,8 @@ import Layout from '../layouts/Layout.astro';
   function draw(timestamp: number) {
     requestAnimationFrame(draw);
 
-    if (timestamp - lastTime < frameInterval) return;
+    const deltaMs = lastTime ? Math.min(34, timestamp - lastTime) : 16.67;
+    const timeScale = deltaMs / baseFrameMs;
     lastTime = timestamp;
 
     // The waterline: rain stops just above the ripple rings
@@ -495,7 +499,7 @@ import Layout from '../layouts/Layout.astro';
 
     for (let i = 0; i < drops.length; i++) {
       if (drops[i] < 0) {
-        drops[i] += 0.7;
+        drops[i] += dropSpeeds[i] * timeScale;
         continue;
       }
 
@@ -507,7 +511,7 @@ import Layout from '../layouts/Layout.astro';
       // Stop drawing if past the waterline
       if (y >= waterline) {
         spawnRipple(Math.min(impactX, canvas.width));
-        drops[i] = Math.random() * -30;
+        drops[i] = Math.random() * -(64 + Math.random() * 42);
         continue;
       }
 
@@ -526,30 +530,30 @@ import Layout from '../layouts/Layout.astro';
       // drops that reach this zone are absorbed and reset before passing below it.
       const umbrellaStrength = umbrellaZone ? getUmbrellaStrength(impactX, y, umbrellaZone) : 0;
       if (umbrellaStrength > 0.92) {
-        drops[i] = Math.random() * -45;
+        drops[i] = Math.random() * -(68 + Math.random() * 38);
         continue;
       }
 
       // Lead character
       const leadAlpha = 0.66 * (1 - umbrellaStrength * 0.9);
-      const drawX = x + (Math.random() - 0.5) * 0.8;
+      const drawX = x + Math.sin((drops[i] + i * 0.37) * 0.22) * 0.35;
       ctx.fillStyle = `rgba(${effectRgb}, ${leadAlpha})`;
       ctx.fillText(char, drawX, y);
 
       // Short-lived trail: visible in-motion, no long persistence.
       if (drops[i] > 1) {
-        const baseTrailAlpha = 0.3 * (1 - umbrellaStrength * 0.85);
-        const trailSteps = [1, 2, 3, 4, 5];
+        const baseTrailAlpha = 0.35 * (1 - umbrellaStrength * 0.85);
+        const trailSteps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
         for (let t = 0; t < trailSteps.length; t++) {
           const step = trailSteps[t];
           const trailChar = charArr[Math.floor(Math.random() * charArr.length)];
-          const trailAlpha = baseTrailAlpha * (1 - t * 0.2);
+          const trailAlpha = baseTrailAlpha * (1 - t * 0.058);
           ctx.fillStyle = `rgba(${effectRgb}, ${trailAlpha})`;
           ctx.fillText(trailChar, drawX, y - fontSize * step);
         }
       }
 
-      drops[i] += 0.85;
+      drops[i] += dropSpeeds[i] * timeScale;
     }
 
     // --- Draw title splashes ---
@@ -577,7 +581,7 @@ import Layout from '../layouts/Layout.astro';
         tsctx.fill();
       }
 
-      s.age += 1;
+      s.age += timeScale;
 
       if (s.age >= s.life) {
         titleSplashes.splice(i, 1);
@@ -608,7 +612,7 @@ import Layout from '../layouts/Layout.astro';
         rctx.stroke();
       }
 
-      r.radius += 0.4;
+      r.radius += 0.52 * timeScale;
 
       if (r.radius >= r.maxRadius) {
         ripples.splice(i, 1);

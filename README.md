@@ -25,6 +25,31 @@ A minimal Astro + MDX blog for notebook-style writeups, math rendering (KaTeX), 
 | `npm run check` | Run Astro type/content checks |
 | `npm run build` | Build static output to `dist/` |
 | `npm run preview` | Preview production build |
+| `npm run notebook:publish -- --input <file.html>` | Copy notebook HTML export into `public/notebooks/` |
+| `npm run notebook:new -- --title "..." --html <file.html>` | Scaffold an MDX blog post that embeds the notebook |
+
+## Add a Notebook Post (Fast Path)
+
+1. Export your `.ipynb` to HTML (from VS Code/Jupyter UI).
+2. Publish the HTML into static assets:
+
+	```bash
+	npm run notebook:publish -- --input notebooks/new_york_city/nyc_median_rent_2025.html
+	```
+
+3. Create the blog post scaffold:
+
+	```bash
+	npm run notebook:new -- --title "NYC Median Rent 2025" --html nyc_median_rent_2025.html --description "Exploring median asking rent by NYC area"
+	```
+
+4. Run locally and review:
+
+	```bash
+	npm run dev
+	```
+
+This creates a new file in `src/content/blog/` with an embedded iframe at `/notebooks/<file.html>`.
 
 ## Notes
 
