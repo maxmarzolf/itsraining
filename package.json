@@ -7,7 +7,9 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "astro": "astro"
+    "astro": "astro",
+    "notebook:publish": "node scripts/publish-notebook.mjs",
+    "notebook:new": "node scripts/new-notebook-post.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.7",

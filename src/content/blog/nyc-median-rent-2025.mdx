@@ -1,0 +1,100 @@
+---
+title: "NYC Median Rent 2025"
+date: "2026-03-03"
+description: "Exploring median asking rent by NYC area"
+---
+
+
+```python
+import pandas as pd
+import geopandas as gpd
+import re
+```
+
+- the dataset to draw the boro polygon can be found here https://data.cityofnewyork.us/City-Government/2020-Neighborhood-Tabulation-Areas-NTAs-/9nt8-h7nd/about_data
+- the dataset for rental prices can be found here https://streeteasy.com/blog/data-dashboard
+- we cast the_geom string into a geometry object, seen by the subsequent info method call
+
+```python
+df = pd.read_csv('2020_Neighborhood_Tabulation_Areas_(NTAs)_20251129.csv')
+df["geometry"] = gpd.GeoSeries.from_wkt(df["the_geom"])
+
+ntas = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:4326")
+ntas
+```
+
+```python
+ntas.info()
+```
+
+```python
+rent = pd.read_csv('medianAskingRent_OneBd.csv')
+rent
+```
+
+#### clean the borough names we will join on
+
+```python
+def normalize_rent_name(s: str) -> str:
+    if pd.isna(s):
+        return s
+    s = s.lower().strip()
+
+    if "/" in s:
+        s = s.split("/")[0]
+
+    # collapse whitespace
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+
+def normalize_nta_name(s: str) -> str:
+    if pd.isna(s):
+        return s
+    s = s.lower().strip()
+
+    # remove anything in parentheses:
+    s = re.sub(r"\s*\(.*?\)", "", s)
+
+    # take only the first neighborhood before a hyphen
+    if "-" in s:
+        s = s.split("-")[0]
+
+    # Collapse whitespace
+    s = re.sub(r"\s+", " ", s)
+    return s
+```
+
+```python
+rent["join_name"] = rent["areaName"].apply(normalize_rent_name)
+ntas["join_name"] = ntas["NTAName"].apply(normalize_nta_name)
+
+ntas_rent = ntas.merge(
+    rent[["join_name", "2025-10"]],
+    on="join_name",
+    how="left",
+)
+```
+
+```python
+vis = ntas_rent.explore(
+    column="2025-10",
+    cmap="viridis",
+    scheme="Quantiles",
+    k=5,
+    legend=True,
+    tiles="CartoDB positron",
+    tooltip=["NTAName", "BoroName", "2025-10"],
+)
+
+vis
+```
+
+<iframe
+  src="/notebooks/nyc_median_rent_map.html"
+  title="NYC Median Rent Map"
+  style={{ width: '100%', height: '600px', border: 'none', borderRadius: '6px' }}
+  loading="lazy"
+></iframe>
+
+[Open interactive map in a new tab](/notebooks/nyc_median_rent_map.html)

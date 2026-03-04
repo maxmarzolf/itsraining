@@ -63,5 +63,33 @@ document.addEventListener('DOMContentLoaded', () => {
     pre.style.position = 'relative';
     pre.appendChild(button);
   });
+
+  const notebookFrames = document.querySelectorAll<HTMLIFrameElement>('.notebook-embed__frame');
+  notebookFrames.forEach((frame) => {
+    const resizeFrame = () => {
+      const iframe = frame;
+
+      try {
+        const iframeDocument = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!iframeDocument) {
+          return;
+        }
+
+        const nextHeight = Math.max(
+          iframeDocument.body?.scrollHeight ?? 0,
+          iframeDocument.documentElement?.scrollHeight ?? 0,
+          1200,
+        );
+
+        iframe.style.height = `${nextHeight}px`;
+      } catch {
+        // Ignore cross-origin/frame access issues.
+      }
+    };
+
+    frame.addEventListener('load', resizeFrame);
+    window.addEventListener('resize', resizeFrame);
+    setTimeout(resizeFrame, 300);
+  });
 });
 </script>
