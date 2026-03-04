@@ -25,9 +25,11 @@ import '../styles/global.css';
         <a href="/" class="site-brand">Max Marzolf</a>
         <nav>
           <a href="/blog">notebooks</a>
+          <button id="rain-ctrl-toggle" style="display:none;background:none;border:1px solid var(--color-accent);color:var(--color-accent);padding:0.35rem 0.75rem;cursor:pointer;font-family:var(--font-sans);font-size:0.78rem;border-radius:4px;text-transform:uppercase;letter-spacing:0.05em;margin-left:0.5rem;" title="Rain Controls">⚙ Rain</button>
         </nav>
       </div>
     </header>
+    <div id="rain-controls-panel" style="display:none;"></div>
     <div class="container">
       <main>
         <slot />

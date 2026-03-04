@@ -18,6 +18,26 @@ function slugify(value) {
     .replace(/-+/g, '-');
 }
 
+function findProjectRoot(startDir) {
+  let currentDir = path.resolve(startDir);
+
+  while (true) {
+    const packageJson = path.join(currentDir, 'package.json');
+    const blogDir = path.join(currentDir, 'src', 'content', 'blog');
+
+    if (fs.existsSync(packageJson) && fs.existsSync(blogDir)) {
+      return currentDir;
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      return null;
+    }
+
+    currentDir = parentDir;
+  }
+}
+
 const title = getArg('--title');
 const html = getArg('--html');
 const description = getArg('--description') || 'Notebook analysis post';
@@ -30,7 +50,22 @@ if (!title || !html) {
 
 const slug = explicitSlug || slugify(title);
 const date = new Date().toISOString().slice(0, 10);
-const projectRoot = process.cwd();
+const projectRoot = findProjectRoot(process.cwd());
+
+if (!projectRoot) {
+  console.error('Could not find project root (expected package.json and src/content/blog). Run this inside the repository.');
+  process.exit(1);
+}
+
+const htmlName = path.basename(html);
+const publishedHtmlPath = path.resolve(projectRoot, 'public', 'notebooks', htmlName);
+
+if (!fs.existsSync(publishedHtmlPath)) {
+  console.error(`Notebook HTML not found in public/notebooks: ${publishedHtmlPath}`);
+  console.error('Run: npm run notebook:publish -- --input <path/to/notebook.html>');
+  process.exit(1);
+}
+
 const postPath = path.resolve(projectRoot, 'src/content/blog', `${slug}.mdx`);
 
 if (fs.existsSync(postPath)) {
@@ -44,21 +79,22 @@ date: "${date}"
 description: "${description.replaceAll('"', '\\"')}"
 ---
 
-This notebook is available as an interactive HTML export.
+The full analysis is available as an interactive notebook export.
 
-<iframe
-  src="/notebooks/${html}"
-  title="${title.replaceAll('"', '&quot;')}"
-  width="100%"
-  height="900"
-  style={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: '8px', background: '#fff' }}
-></iframe>
+<div className="notebook-embed notebook-embed--wide">
+  <iframe
+    src="/notebooks/${htmlName}"
+    title="${title.replaceAll('"', '&quot;')}"
+    loading="lazy"
+    className="notebook-embed__frame"
+  ></iframe>
+</div>
 
-[Open notebook in a new tab](/notebooks/${html})
+[Open notebook in a new tab](/notebooks/${htmlName})
 `;
 
 fs.mkdirSync(path.dirname(postPath), { recursive: true });
 fs.writeFileSync(postPath, content, 'utf8');
 
 console.log(`Created post: ${postPath}`);
-console.log(`Notebook URL used: /notebooks/${html}`);
+console.log(`Notebook URL used: /notebooks/${htmlName}`);

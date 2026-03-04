@@ -142,6 +142,40 @@ import Layout from '../layouts/Layout.astro';
 </style>
 
 <script>
+  // ─── Rain Config (all tunables) ───
+  const RC = {
+    fontSize: 9,
+    dropSpeedMin: 0.26,
+    dropSpeedRange: 0.69,
+    trailSteps: 40,
+    trailBaseAlpha: 0.35,
+    trailDecay: 0.058,
+    leadAlpha: 0.66,
+    effectR: 0,
+    effectG: 95,
+    effectB: 184,
+    umbrellaCore: 0.65,
+    umbrellaThreshold: 0.65,
+    swayAmplitude: 1.75,
+    swayFrequency: 0.145,
+    respawnMin: 64,
+    respawnRange: 42,
+    rippleMinRadius: 20,
+    rippleRadiusRange: 30,
+    rippleBaseOpacity: 0.6,
+    rippleOpacityRange: 0.2,
+    rippleSpeed: 0.52,
+    splashDropletMin: 14,
+    splashDropletRange: 7,
+    splashVx: 2.2,
+    splashVy: 2.2,
+    splashVyBase: 2.2,
+    splashChance: 1,
+    waterlineOffset: 20,
+    columnDensity: 1.35,
+  };
+  (window as any).__RC = RC;
+
   const canvas = document.getElementById('matrix-rain') as HTMLCanvasElement;
   const ctx = canvas.getContext('2d')!;
   const rippleCanvas = document.getElementById('ripple-canvas') as HTMLCanvasElement;
@@ -169,18 +203,17 @@ import Layout from '../layouts/Layout.astro';
 
   const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF';
   const charArr = chars.split('');
-  const fontSize = 14;
-  let columns = Math.floor(canvas.width / fontSize);
+  let columns = Math.floor(canvas.width / RC.fontSize);
   let drops: number[] = [];
   let dropSpeeds: number[] = [];
 
   function initDrops() {
-    columns = Math.floor(canvas.width / fontSize);
+    columns = Math.floor((canvas.width / RC.fontSize) * RC.columnDensity);
     drops = [];
     dropSpeeds = [];
     for (let i = 0; i < columns; i++) {
       drops[i] = Math.random() * -140;
-      dropSpeeds[i] = 0.43 + Math.random() * 0.16;
+      dropSpeeds[i] = RC.dropSpeedMin + Math.random() * RC.dropSpeedRange;
     }
   }
   initDrops();
@@ -216,18 +249,18 @@ import Layout from '../layouts/Layout.astro';
     ripples.push({
       x,
       radius: 1,
-      maxRadius: 20 + Math.random() * 30,
-      opacity: 0.6 + Math.random() * 0.2,
+      maxRadius: RC.rippleMinRadius + Math.random() * RC.rippleRadiusRange,
+      opacity: RC.rippleBaseOpacity + Math.random() * RC.rippleOpacityRange,
     });
   }
 
   function spawnTitleSplash(x: number, y: number) {
-    const dropletCount = 6 + Math.floor(Math.random() * 5);
+    const dropletCount = RC.splashDropletMin + Math.floor(Math.random() * RC.splashDropletRange);
     const droplets: SplashDroplet[] = [];
     for (let i = 0; i < dropletCount; i++) {
       droplets.push({
-        vx: (Math.random() - 0.5) * 2.2,
-        vy: -2.2 - Math.random() * 2.2,
+        vx: (Math.random() - 0.5) * RC.splashVx,
+        vy: -RC.splashVyBase - Math.random() * RC.splashVy,
         size: 0.8 + Math.random() * 1.5,
         xBias: (Math.random() - 0.5) * 6,
       });
@@ -245,8 +278,6 @@ import Layout from '../layouts/Layout.astro';
 
   let lastTime = 0;
   const baseFrameMs = 1000 / 60;
-  const umbrellaCore = 0.78;
-  const effectRgb = '0, 95, 184';
 
   function getUmbrellaStrength(
     x: number,
@@ -256,10 +287,9 @@ import Layout from '../layouts/Layout.astro';
     const nx = (x - zone.cx) / zone.rx;
     const ny = (y - zone.cy) / zone.ry;
     const dist = Math.sqrt(nx * nx + ny * ny);
-    if (dist <= umbrellaCore) return 1;
+    if (dist <= RC.umbrellaCore) return 1;
     if (dist >= 1) return 0;
-    const t = (1 - dist) / (1 - umbrellaCore);
-    // Smoothstep for softer edge transition
+    const t = (1 - dist) / (1 - RC.umbrellaCore);
     return t * t * (3 - 2 * t);
   }
 
@@ -469,14 +499,12 @@ import Layout from '../layouts/Layout.astro';
     const timeScale = deltaMs / baseFrameMs;
     lastTime = timestamp;
 
-    // The waterline: rain stops just above the ripple rings
-    const waterline = canvas.height - 20;
+    const effectRgb = `${RC.effectR}, ${RC.effectG}, ${RC.effectB}`;
+    const waterline = canvas.height - RC.waterlineOffset;
 
-    // Full clear each frame avoids accumulated column darkening.
     ctx.fillStyle = pageBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Clear everything below the waterline so rain doesn't bleed through
     ctx.fillStyle = pageBg;
     ctx.fillRect(0, waterline, canvas.width, canvas.height - waterline);
 
@@ -495,8 +523,9 @@ import Layout from '../layouts/Layout.astro';
         ry: (bottom - top) * 0.5,
       };
     }
-    ctx.font = `${fontSize}px "Baloo 2", sans-serif`;
+    ctx.font = `${RC.fontSize}px "Baloo 2", sans-serif`;
 
+    const colWidth = RC.fontSize / RC.columnDensity;
     for (let i = 0; i < drops.length; i++) {
       if (drops[i] < 0) {
         drops[i] += dropSpeeds[i] * timeScale;
@@ -504,14 +533,13 @@ import Layout from '../layouts/Layout.astro';
       }
 
       const char = charArr[Math.floor(Math.random() * charArr.length)];
-      const x = i * fontSize;
-      const y = drops[i] * fontSize;
-      const impactX = x + fontSize * 0.5;
+      const x = i * colWidth;
+      const y = drops[i] * RC.fontSize;
+      const impactX = x + RC.fontSize * 0.5;
 
-      // Stop drawing if past the waterline
       if (y >= waterline) {
         spawnRipple(Math.min(impactX, canvas.width));
-        drops[i] = Math.random() * -(64 + Math.random() * 42);
+        drops[i] = Math.random() * -(RC.respawnMin + Math.random() * RC.respawnRange);
         continue;
       }
 
@@ -521,35 +549,30 @@ import Layout from '../layouts/Layout.astro';
         impactX <= titleRect.right &&
         y >= titleRect.top &&
         y <= titleRect.bottom &&
-        Math.random() < 0.3
+        Math.random() < RC.splashChance
       ) {
         spawnTitleSplash(impactX, y);
       }
 
-      // Umbrella effect over the title + subtitle block:
-      // drops that reach this zone are absorbed and reset before passing below it.
       const umbrellaStrength = umbrellaZone ? getUmbrellaStrength(impactX, y, umbrellaZone) : 0;
-      if (umbrellaStrength > 0.92) {
-        drops[i] = Math.random() * -(68 + Math.random() * 38);
+      if (umbrellaStrength > RC.umbrellaThreshold) {
+        drops[i] = Math.random() * -(RC.respawnMin + Math.random() * RC.respawnRange);
         continue;
       }
 
-      // Lead character
-      const leadAlpha = 0.66 * (1 - umbrellaStrength * 0.9);
-      const drawX = x + Math.sin((drops[i] + i * 0.37) * 0.22) * 0.35;
+      const leadAlpha = RC.leadAlpha * (1 - umbrellaStrength * 0.9);
+      const drawX = x + Math.sin((drops[i] + i * 0.37) * RC.swayFrequency) * RC.swayAmplitude;
       ctx.fillStyle = `rgba(${effectRgb}, ${leadAlpha})`;
       ctx.fillText(char, drawX, y);
 
-      // Short-lived trail: visible in-motion, no long persistence.
       if (drops[i] > 1) {
-        const baseTrailAlpha = 0.35 * (1 - umbrellaStrength * 0.85);
-        const trailSteps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-        for (let t = 0; t < trailSteps.length; t++) {
-          const step = trailSteps[t];
+        const baseTrailAlpha = RC.trailBaseAlpha * (1 - umbrellaStrength * 0.85);
+        for (let t = 0; t < RC.trailSteps; t++) {
+          const step = t + 1;
           const trailChar = charArr[Math.floor(Math.random() * charArr.length)];
-          const trailAlpha = baseTrailAlpha * (1 - t * 0.058);
+          const trailAlpha = baseTrailAlpha * (1 - t * RC.trailDecay);
           ctx.fillStyle = `rgba(${effectRgb}, ${trailAlpha})`;
-          ctx.fillText(trailChar, drawX, y - fontSize * step);
+          ctx.fillText(trailChar, drawX, y - RC.fontSize * step);
         }
       }
 
@@ -558,26 +581,25 @@ import Layout from '../layouts/Layout.astro';
 
     // --- Draw title splashes ---
     tsctx.clearRect(0, 0, titleSplashCanvas.width, titleSplashCanvas.height);
+    const splashEffectRgb = `${RC.effectR}, ${RC.effectG}, ${RC.effectB}`;
     for (let i = titleSplashes.length - 1; i >= 0; i--) {
       const s = titleSplashes[i];
       const progress = s.age / s.life;
       const currentOpacity = s.opacity * (1 - progress);
       const gravity = 0.18 * s.age;
 
-      // Bright impact core
       tsctx.beginPath();
       tsctx.arc(s.x, s.y, 1.2 + progress * 1.8, 0, Math.PI * 2);
-      tsctx.fillStyle = `rgba(${effectRgb}, ${currentOpacity})`;
+      tsctx.fillStyle = `rgba(${splashEffectRgb}, ${currentOpacity})`;
       tsctx.fill();
 
-      // Ballistic droplets for a stronger "splash" feel
       for (let j = 0; j < s.droplets.length; j++) {
         const d = s.droplets[j];
         const px = s.x + d.xBias + d.vx * s.age;
         const py = s.y + d.vy * s.age + gravity;
         tsctx.beginPath();
         tsctx.arc(px, py, d.size * (1 - progress * 0.35), 0, Math.PI * 2);
-        tsctx.fillStyle = `rgba(${effectRgb}, ${currentOpacity * 0.95})`;
+        tsctx.fillStyle = `rgba(${splashEffectRgb}, ${currentOpacity * 0.95})`;
         tsctx.fill();
       }
 
@@ -590,6 +612,7 @@ import Layout from '../layouts/Layout.astro';
 
     // --- Draw ripples ---
     rctx.clearRect(0, 0, rippleCanvas.width, rippleCanvas.height);
+    const rippleEffectRgb = `${RC.effectR}, ${RC.effectG}, ${RC.effectB}`;
 
     for (let i = ripples.length - 1; i >= 0; i--) {
       const r = ripples[i];
@@ -599,7 +622,7 @@ import Layout from '../layouts/Layout.astro';
       // Outer ring
       rctx.beginPath();
       rctx.ellipse(r.x, rippleCanvas.height - 5, r.radius, r.radius * 0.35, 0, 0, Math.PI * 2);
-      rctx.strokeStyle = `rgba(${effectRgb}, ${currentOpacity})`;
+      rctx.strokeStyle = `rgba(${rippleEffectRgb}, ${currentOpacity})`;
       rctx.lineWidth = 2;
       rctx.stroke();
 
@@ -607,12 +630,12 @@ import Layout from '../layouts/Layout.astro';
       if (r.radius > 5) {
         rctx.beginPath();
         rctx.ellipse(r.x, rippleCanvas.height - 5, r.radius * 0.5, r.radius * 0.18, 0, 0, Math.PI * 2);
-        rctx.strokeStyle = `rgba(${effectRgb}, ${currentOpacity * 0.7})`;
+        rctx.strokeStyle = `rgba(${rippleEffectRgb}, ${currentOpacity * 0.7})`;
         rctx.lineWidth = 1.5;
         rctx.stroke();
       }
 
-      r.radius += 0.52 * timeScale;
+      r.radius += RC.rippleSpeed * timeScale;
 
       if (r.radius >= r.maxRadius) {
         ripples.splice(i, 1);
@@ -626,5 +649,238 @@ import Layout from '../layouts/Layout.astro';
   initHeroImage();
   requestAnimationFrame(draw);
 
-  // Text decode animation removed — headings are now static
+  // ─── Rain Control Panel ───
+  const toggleBtn = document.getElementById('rain-ctrl-toggle') as HTMLButtonElement | null;
+  const panel = document.getElementById('rain-controls-panel') as HTMLDivElement | null;
+
+  const showControls = new URLSearchParams(window.location.search).has('rain-controls');
+  if (toggleBtn && panel && showControls) {
+    toggleBtn.style.display = 'inline-block';
+    let panelOpen = false;
+
+    // Panel styles
+    Object.assign(panel.style, {
+      position: 'fixed',
+      top: '48px',
+      right: '12px',
+      width: '340px',
+      maxHeight: 'calc(100vh - 60px)',
+      overflowY: 'auto',
+      background: 'rgba(255,255,255,0.97)',
+      border: '2px solid #005fb8',
+      borderRadius: '8px',
+      padding: '14px 16px',
+      zIndex: '9999',
+      fontFamily: 'var(--font-sans)',
+      fontSize: '12px',
+      boxShadow: '0 4px 24px rgba(0,0,0,0.13)',
+    });
+
+    type SliderDef = {
+      key: keyof typeof RC;
+      label: string;
+      min: number;
+      max: number;
+      step: number;
+      reinit?: boolean;
+    };
+
+    const sliders: SliderDef[] = [
+      { key: 'fontSize', label: 'Font Size', min: 6, max: 30, step: 1, reinit: true },
+      { key: 'columnDensity', label: 'Column Density', min: 0.2, max: 3, step: 0.05, reinit: true },
+      { key: 'dropSpeedMin', label: 'Drop Speed Min', min: 0.05, max: 2, step: 0.01, reinit: true },
+      { key: 'dropSpeedRange', label: 'Drop Speed Range', min: 0, max: 1, step: 0.01, reinit: true },
+      { key: 'trailSteps', label: 'Trail Length', min: 0, max: 40, step: 1 },
+      { key: 'trailBaseAlpha', label: 'Trail Alpha', min: 0, max: 1, step: 0.01 },
+      { key: 'trailDecay', label: 'Trail Decay', min: 0.001, max: 0.2, step: 0.001 },
+      { key: 'leadAlpha', label: 'Lead Alpha', min: 0, max: 1, step: 0.01 },
+      { key: 'effectR', label: 'Color R', min: 0, max: 255, step: 1 },
+      { key: 'effectG', label: 'Color G', min: 0, max: 255, step: 1 },
+      { key: 'effectB', label: 'Color B', min: 0, max: 255, step: 1 },
+      { key: 'swayAmplitude', label: 'Sway Amplitude', min: 0, max: 5, step: 0.05 },
+      { key: 'swayFrequency', label: 'Sway Frequency', min: 0, max: 1, step: 0.005 },
+      { key: 'umbrellaCore', label: 'Umbrella Core', min: 0, max: 1, step: 0.01 },
+      { key: 'umbrellaThreshold', label: 'Umbrella Threshold', min: 0, max: 1, step: 0.01 },
+      { key: 'respawnMin', label: 'Respawn Min Delay', min: 0, max: 200, step: 1 },
+      { key: 'respawnRange', label: 'Respawn Delay Range', min: 0, max: 200, step: 1 },
+      { key: 'waterlineOffset', label: 'Waterline Offset', min: 0, max: 200, step: 1 },
+      { key: 'rippleMinRadius', label: 'Ripple Min Radius', min: 0, max: 80, step: 1 },
+      { key: 'rippleRadiusRange', label: 'Ripple Radius Range', min: 0, max: 80, step: 1 },
+      { key: 'rippleBaseOpacity', label: 'Ripple Opacity', min: 0, max: 1, step: 0.01 },
+      { key: 'rippleSpeed', label: 'Ripple Speed', min: 0.05, max: 3, step: 0.01 },
+      { key: 'splashDropletMin', label: 'Splash Droplets Min', min: 0, max: 20, step: 1 },
+      { key: 'splashDropletRange', label: 'Splash Droplets Range', min: 0, max: 15, step: 1 },
+      { key: 'splashVx', label: 'Splash Vx', min: 0, max: 8, step: 0.1 },
+      { key: 'splashVyBase', label: 'Splash Vy Base', min: 0, max: 8, step: 0.1 },
+      { key: 'splashVy', label: 'Splash Vy Range', min: 0, max: 8, step: 0.1 },
+      { key: 'splashChance', label: 'Splash Chance', min: 0, max: 1, step: 0.01 },
+    ];
+
+    // Color swatch
+    const swatchRow = document.createElement('div');
+    swatchRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:10px;';
+    const swatchLabel = document.createElement('span');
+    swatchLabel.textContent = 'Preview:';
+    swatchLabel.style.fontWeight = '600';
+    const swatch = document.createElement('div');
+    swatch.id = 'rc-swatch';
+    swatch.style.cssText = `width:32px;height:18px;border-radius:3px;border:1px solid #ccc;background:rgb(${RC.effectR},${RC.effectG},${RC.effectB});`;
+    swatchRow.appendChild(swatchLabel);
+    swatchRow.appendChild(swatch);
+
+    // Title
+    const title = document.createElement('div');
+    title.style.cssText = 'font-weight:700;font-size:14px;margin-bottom:8px;color:#005fb8;display:flex;justify-content:space-between;align-items:center;';
+    title.innerHTML = '<span>Rain Controls</span>';
+
+    // Export button
+    const exportBtn = document.createElement('button');
+    exportBtn.textContent = 'Copy Config';
+    exportBtn.style.cssText = 'font-size:11px;padding:3px 8px;cursor:pointer;border:1px solid #005fb8;background:#eef4fb;color:#005fb8;border-radius:3px;font-family:inherit;';
+    exportBtn.addEventListener('click', () => {
+      const json = JSON.stringify(RC, null, 2);
+      navigator.clipboard.writeText(json).then(() => {
+        exportBtn.textContent = 'Copied!';
+        setTimeout(() => exportBtn.textContent = 'Copy Config', 1500);
+      });
+    });
+    title.appendChild(exportBtn);
+
+    panel.appendChild(title);
+    panel.appendChild(swatchRow);
+
+    // Group headers
+    const groups: Record<string, string[]> = {
+      'Drops': ['fontSize', 'columnDensity', 'dropSpeedMin', 'dropSpeedRange'],
+      'Trail': ['trailSteps', 'trailBaseAlpha', 'trailDecay', 'leadAlpha'],
+      'Color': ['effectR', 'effectG', 'effectB'],
+      'Sway': ['swayAmplitude', 'swayFrequency'],
+      'Umbrella': ['umbrellaCore', 'umbrellaThreshold'],
+      'Respawn': ['respawnMin', 'respawnRange', 'waterlineOffset'],
+      'Ripples': ['rippleMinRadius', 'rippleRadiusRange', 'rippleBaseOpacity', 'rippleSpeed'],
+      'Splashes': ['splashDropletMin', 'splashDropletRange', 'splashVx', 'splashVyBase', 'splashVy', 'splashChance'],
+    };
+
+    function updateSwatch() {
+      const s = document.getElementById('rc-swatch');
+      if (s) s.style.background = `rgb(${RC.effectR},${RC.effectG},${RC.effectB})`;
+    }
+
+    for (const [groupName, keys] of Object.entries(groups)) {
+      const header = document.createElement('div');
+      header.style.cssText = 'font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#666;margin:10px 0 4px;border-bottom:1px solid #e0e0e0;padding-bottom:2px;';
+      header.textContent = groupName;
+      panel.appendChild(header);
+
+      for (const key of keys) {
+        const def = sliders.find(s => s.key === key);
+        if (!def) continue;
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;margin:3px 0;';
+
+        const label = document.createElement('label');
+        label.textContent = def.label;
+        label.style.cssText = 'flex:0 0 130px;font-size:11px;color:#333;';
+
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = String(def.min);
+        input.max = String(def.max);
+        input.step = String(def.step);
+        input.value = String(RC[def.key]);
+        input.style.cssText = 'flex:1;height:16px;accent-color:#005fb8;';
+
+        const valSpan = document.createElement('span');
+        valSpan.textContent = String(RC[def.key]);
+        valSpan.style.cssText = 'flex:0 0 42px;text-align:right;font-size:11px;font-family:monospace;color:#005fb8;cursor:pointer;';
+        valSpan.title = 'Click to edit';
+
+        // Click value to type a number directly
+        valSpan.addEventListener('click', () => {
+          const numInput = document.createElement('input');
+          numInput.type = 'number';
+          numInput.min = String(def.min);
+          numInput.max = String(def.max);
+          numInput.step = String(def.step);
+          numInput.value = String(RC[def.key]);
+          numInput.style.cssText = 'width:50px;font-size:11px;font-family:monospace;border:1px solid #005fb8;border-radius:2px;padding:1px 3px;';
+          valSpan.replaceWith(numInput);
+          numInput.focus();
+          numInput.select();
+          const commit = () => {
+            const v = parseFloat(numInput.value);
+            if (!isNaN(v)) {
+              (RC as any)[def.key] = Math.max(def.min, Math.min(def.max, v));
+              input.value = String(RC[def.key]);
+            }
+            valSpan.textContent = String(RC[def.key]);
+            numInput.replaceWith(valSpan);
+            if (def.reinit) initDrops();
+            updateSwatch();
+          };
+          numInput.addEventListener('blur', commit);
+          numInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') commit(); });
+        });
+
+        input.addEventListener('input', () => {
+          (RC as any)[def.key] = parseFloat(input.value);
+          valSpan.textContent = input.value;
+          if (def.reinit) initDrops();
+          updateSwatch();
+        });
+
+        row.appendChild(label);
+        row.appendChild(input);
+        row.appendChild(valSpan);
+        panel.appendChild(row);
+      }
+    }
+
+    // Reset button
+    const resetRow = document.createElement('div');
+    resetRow.style.cssText = 'margin-top:12px;text-align:center;';
+    const resetBtn = document.createElement('button');
+    resetBtn.textContent = 'Reset Defaults';
+    resetBtn.style.cssText = 'font-size:11px;padding:4px 14px;cursor:pointer;border:1px solid #c00;background:#fff0f0;color:#c00;border-radius:3px;font-family:inherit;';
+    resetBtn.addEventListener('click', () => {
+      const defaults = {
+        fontSize: 9, dropSpeedMin: 0.26, dropSpeedRange: 0.69,
+        trailSteps: 40, trailBaseAlpha: 0.35, trailDecay: 0.058,
+        leadAlpha: 0.66, effectR: 0, effectG: 95, effectB: 184,
+        umbrellaCore: 0.65, umbrellaThreshold: 0.65,
+        swayAmplitude: 1.75, swayFrequency: 0.145,
+        respawnMin: 64, respawnRange: 42,
+        rippleMinRadius: 20, rippleRadiusRange: 30,
+        rippleBaseOpacity: 0.6, rippleOpacityRange: 0.2,
+        rippleSpeed: 0.52,
+        splashDropletMin: 14, splashDropletRange: 7,
+        splashVx: 2.2, splashVy: 2.2, splashVyBase: 2.2,
+        splashChance: 1, waterlineOffset: 20, columnDensity: 1.35,
+      };
+      Object.assign(RC, defaults);
+      // Refresh all sliders
+      panel.querySelectorAll('input[type=range]').forEach((inp) => {
+        const rangeInp = inp as HTMLInputElement;
+        const def = sliders.find(s => s.label === rangeInp.closest('div')?.querySelector('label')?.textContent);
+        if (def) {
+          rangeInp.value = String(RC[def.key]);
+          const valEl = rangeInp.nextElementSibling as HTMLElement;
+          if (valEl) valEl.textContent = String(RC[def.key]);
+        }
+      });
+      initDrops();
+      updateSwatch();
+    });
+    resetRow.appendChild(resetBtn);
+    panel.appendChild(resetRow);
+
+    toggleBtn.addEventListener('click', () => {
+      panelOpen = !panelOpen;
+      panel.style.display = panelOpen ? 'block' : 'none';
+      toggleBtn.style.borderColor = panelOpen ? '#c00' : 'var(--color-accent)';
+      toggleBtn.style.color = panelOpen ? '#c00' : 'var(--color-accent)';
+      toggleBtn.innerHTML = panelOpen ? '✕ Rain' : '⚙ Rain';
+    });
+  }
 </script>
